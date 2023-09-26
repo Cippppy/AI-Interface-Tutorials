@@ -45,4 +45,4 @@ if __name__ == '__main__':
 
   ## My changed code
   trainer = pl.Trainer(deterministic=True, max_epochs=5)
-  trainer.fit(mlp, DataLoader(dataset))
+  trainer.fit(mlp, DataLoader(dataset, num_workers=12))

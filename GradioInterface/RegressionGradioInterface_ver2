@@ -3,33 +3,47 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
-def make_plot(plot_type, a, epoch):
+def make_plot(plot_type, a, epoch, num_sets=3):
     if plot_type == "log":
-        return logReg(a=a, epoch=epoch)
+        return logReg(a=a, epoch=epoch, num_sets=num_sets)
     elif plot_type == "lin":
         return linReg(a=a,epoch=epoch)
         
 
 # a = learning rate
 # epoch = number of training iterations
-def logReg(a, epoch):
-    #### generate random data-set ####
-
-    #np.random.seed(0) # set random seed (optional)
-
+def logReg(a, epoch, num_sets):
+    
+    #### generate random data-sets ####
+    
     ## set mean and covariance of our datasets
     mean1 = [20,35]
     cov1 = [[100,100],[-100,100]] 
-    mean2 = [60,70] 
-    cov2 = [[100,100],[100,-100]] 
-
     ## concatenate values to set x values for datasets
-    x1, x2 = np.random.multivariate_normal(mean1, cov1, 100).T
-    x_1, x_2 = np.random.multivariate_normal(mean2, cov2, 100).T
-    x1 = (np.concatenate((x1, x_1), axis=0))/10
-    x2 = (np.concatenate((x2, x_2), axis=0))/10
+    x1, x2 = np.random.multivariate_normal(mean1, cov1, 100, tol=3).T
+    means = [mean1]
+    convs = [cov1]
+    multiVar1 = [x1]
+    multiVar2 = [x2]
+    
+    for i in range(num_sets-1):
+        ## set mean and covariance of our datasets
+        tempMean = [mean1[0]+(40*i),mean1[1]+(35*i)]
+        tempConv = [[100,100],[100,-100]]
+        tempConcat1, tempConcat2 = np.random.multivariate_normal(tempMean, tempConv, 100).T
+        means.append(tempMean)
+        convs.append(tempConv)
+        multiVar1.append(tempConcat1)
+        multiVar2.append(tempConcat2)
 
+        ## concatenate values to set x values for datasets
+    x1 = (np.concatenate((multiVar1), axis=0))/10
+    x2 = (np.concatenate((multiVar2), axis=0))/10
+
+    print(len(x1))
+    
     ## set y values of datasets
     y1 = np.zeros(100) # y[0:100] is zero dataset (dataset we want our decision boundary to be above)
     y2 = np.ones(100) # y[101:200] is one dataset (dataset we want our decision boundary to be below)
@@ -59,7 +73,7 @@ def logReg(a, epoch):
             # y_hat = (y_hat or h_w(x) expression)
             y_hat = 1 / (1 + np.exp(-(wb * xj.T)))
             # J = (cost function, also referred to as L)
-            J = -((y[i] * np.log(y_hat)) + ((1 - y[i])*np.log(1 - y_hat)))
+            J = -((y[i]*np.log(y_hat)))
             # d_J = (∂J(w)/∂w function, equation can be solved with information on slide 27)
             d_J = ((y_hat) - y[i]) * xj
             # wb = (weight updating equation)
@@ -143,16 +157,22 @@ def linReg(a, epoch):
     
     return ["plt1.png","plt2.png"]
 
-with gr.Blocks() as demo:
-    bType = gr.Radio(label="Plot type",
+with gr.Blocks(title="Regression Visualization") as demo:
+    gr.Markdown(
+    """
+    # Regression Visualization for Machine Learning
+    Choose your variables below to create a linear or logistic regression model!
+    """)
+    with gr.Row():
+        bType = gr.Radio(label="Regression Type",info="Choose 'log' for logistic, Choose 'lin' for linear",
                       choices=['log','lin'], value='log')
-    l_rate = gr.Number(value=0.01,label="Learning Rate")
-    epochs = gr.Number(value=100,label="Epochs",precision=0)
+        l_rate = gr.Number(value=0.01,label="Learning Rate",info="Enter a value in the range 0.0 - 1.0")
+        epochs = gr.Number(value=100,label="Number of Epochs (Number of Training Iterations)",info="Linear Regression: Enter an integer from 1 - 250  |  Logisitc Regression: Enter an integer bigger than 199",precision=0)
     bStart = gr.Button(label="Start")
     with gr.Row():
-        plot1 = gr.Image(type='filepath',label="Regression Graph",height=750,width=750)
-        plot2 = gr.Image(type='filepath',label="Loss Graph",height=750,width=750)
-    bStart.click(make_plot, inputs=[bType,l_rate,epochs], outputs=[plot1,plot2])
+        plot1 = gr.Image(type='filepath',label="Regression Graph",height=600,width=600)
+        plot2 = gr.Image(type='filepath',label="Loss Graph",height=600,width=600)
+    bStart.click(make_plot, inputs=[bType,l_rate,epochs], outputs=[plot1,plot2], show_progress="full")
     demo.load()
 
 if __name__== "__main__" :

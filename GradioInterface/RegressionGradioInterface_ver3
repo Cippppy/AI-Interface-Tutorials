@@ -1,0 +1,200 @@
+## ALTAIR
+
+import gradio as gr
+import altair as alt
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def make_plot(plot_type, a, epoch):
+    if plot_type == "log":
+        return logReg(a=a, epoch=epoch)
+    elif plot_type == "lin":
+        return linReg(a=a,epoch=epoch)
+        
+
+# a = learning rate
+# epoch = number of training iterations
+def logReg(a, epoch):
+    #### generate random data-set ####
+
+    #np.random.seed(0) # set random seed (optional)
+
+    ## set mean and covariance of our datasets
+    mean1 = [20,35]
+    cov1 = [[100,100],[-100,100]] 
+    mean2 = [60,70] 
+    cov2 = [[100,100],[100,-100]] 
+
+    ## concatenate values to set x values for datasets
+    x1, x2 = np.random.multivariate_normal(mean1, cov1, 100).T
+    x_1, x_2 = np.random.multivariate_normal(mean2, cov2, 100).T
+    x1 = (np.concatenate((x1, x_1), axis=0))/10
+    x2 = (np.concatenate((x2, x_2), axis=0))/10
+
+    ## set y values of datasets
+    y1 = np.zeros(100) # y[0:100] is zero dataset (dataset we want our decision boundary to be above)
+    y2 = np.ones(100) # y[101:200] is one dataset (dataset we want our decision boundary to be below)
+    y = np.concatenate((y1, y2), axis=0) # combine datasets into one term
+
+    w = np.matrix([(np.random.rand())/100,(np.random.rand())+0.0001/100]) # begin weights at random starting point
+    b = np.matrix([np.random.rand()]) # begin bias term at random starting point
+    wb = np.concatenate((b, w), axis=1) # combine w and b into one weight term
+    print('f = b + x1*w1 + x2*w2')
+    print('Starting weights:', 'f = ', wb[0,0],'+ x1', wb[0,1], '+ x2' , wb[0,2])
+
+    loss = np.empty([epoch]) # term to store all loss terms for plotting
+    iterat = np.empty([epoch]) # term to store all epoch numbers to be plotted vs loss
+    for n in range (epoch):
+        iterat[n] = n
+
+    for p in range (epoch):
+        L, J = np.matrix([[0.0, 0.0, 0.0]]), 0.0 # reset gradient (∂J(w)/∂w) and loss for each epoch
+        #### Code the equations to solve for the loss and to update 
+        #### the weights and biases for each epoch below. 
+        
+        #### Hint: you will need to use the for loop below to create a summation to solve 
+        #### for wb and J (loss) for each epoch. xj has been given as a starting point.
+        for i in range(len(x1)):
+            xj = np.matrix([1,x1[i],x2[i]])
+            
+            # y_hat = (y_hat or h_w(x) expression)
+            y_hat = 1 / (1 + np.exp(-(wb * xj.T)))
+            # J = (cost function, also referred to as L)
+            J = -((y[i] * np.log(y_hat)) + ((1 - y[i])*np.log(1 - y_hat)))
+            # d_J = (∂J(w)/∂w function, equation can be solved with information on slide 27)
+            d_J = ((y_hat) - y[i]) * xj
+            # wb = (weight updating equation)
+            wb = wb - a * (d_J)
+
+        loss[p] = J
+        if ((p % 100) == 0):
+            print('loss:', J,'  Gradient (∂J(w)/∂w) [[b, w1, w2]]:',L[0])
+    print('Updated weights:', 'f = ', wb[0,0],'+ x1', wb[0,1], '+ x2' , wb[0,2])
+
+    ## Plot decision boundary and data
+    scatterData1 = pd.DataFrame({'x': x1[1:100],
+                                'y': x2[1:100]})
+    scatterFig1 = alt.Chart(scatterData1).mark_point().encode(
+                                                            x='x:Q',
+                                                            y='y:Q'
+                                                        ).properties(
+                                                            title="Decision Boundary"
+                                                        )
+    scatterData2 = pd.DataFrame({'x': x1[101:200],
+                                'y': x2[101:200]})
+    scatterFig2 = alt.Chart(scatterData2).mark_point(color='green').encode(
+                                                            x='x:Q',
+                                                            y='y:Q',
+                                                        ).properties(
+                                                            title="Decision Boundary"
+                                                        )
+    
+    y2 = np.array(np.array(-(x1*wb[0,1] + wb[0,0])/wb[0,2],dtype=float))
+                   
+    trendLine = pd.DataFrame({'x': x1.flatten(),
+                              'y': y2.flatten() })
+    trendLineFig = alt.Chart(trendLine).mark_line().encode(
+                                                            x='x:Q',
+                                                            y='y:Q'
+                                                        ).properties(
+                                                            title="Decision Boundary"
+                                                        )
+    
+    finalFig = scatterFig1 + scatterFig2 + trendLineFig
+    
+    lossData = pd.DataFrame({'Number of Iterations': iterat[100:],
+                              'Loss Value': loss[100:] })
+    lossFig = alt.Chart(lossData).mark_line().encode(
+                                                    x='Number of Iterations:Q',
+                                                    y='Loss Value:Q'
+                                                ).properties(
+                                                    title='Plot of loss values over number of iterations'
+                                                )
+    
+    return [finalFig.interactive(), lossFig.interactive()]
+
+
+# a = learning rate step size
+# epoch = number of training iterations
+def linReg(a, epoch):
+    # generate random data-set
+    # np.random.seed(0) # choose random seed (optional)
+    x = np.random.rand(100, 1)
+    y = 2 + 3 * x + np.random.rand(100, 1)
+
+    # J = 0 # initialize J, this can be deleted once J is defined in the loop
+    w = np.matrix([np.random.rand(),np.random.rand()]) # slope and y-intercept
+    ite = epoch # number of training iterations
+
+    jList = []
+    numIte = []
+
+    # Write Linear Regression Code to Solve for w (slope and y-intercept) Here ##
+    for p in range (ite):
+        for i in range(len(x)):
+            # Calculate w and J here
+            x_vec = np.matrix([x[i][0],1]) # Option 1 | Setting up a vector for x (x_vec[j] corresponds to w[j])
+            h = w * x_vec.T ## Hint: you may need to transpose x or w by adding .T to the end of the variable
+            w = w - a * (h - y[i]) * x_vec
+            J = (1/2) * (((h - y[i])) ** 2)
+            J = J.item()
+            
+        jList.append(J)
+        numIte.append(p)
+        print('Loss:', J)
+
+    ## if done correctly the line should be in line with the data points ##
+
+    print('f = ', w[0,0],'x + ', w[0,1])
+    y2 = np.array(np.array((w[0,1]+(w[0,0] * x)),dtype=float)).T
+    
+    scatterData = pd.DataFrame({'x': x.flatten(),
+                                'y': y.flatten()})
+    scatterFig = alt.Chart(scatterData).mark_point().encode(
+                                                            x='x:Q',
+                                                            y='y:Q'
+                                                        ).properties(
+                                                            title='Plot of random data values with linear regression line'
+                                                        )
+    
+    trendLine = pd.DataFrame({'x': x.flatten(),
+                              'y': y2.flatten() })
+    trendLineFig = alt.Chart(trendLine).mark_line().encode(
+                                                            x='x:Q',
+                                                            y='y:Q'
+                                                        )
+    
+    finalFig = scatterFig + trendLineFig
+    
+    lossData = pd.DataFrame({'Number of Iterations': range(1,len(jList)+1),
+                              'Loss Value': jList })
+    lossFig = alt.Chart(lossData).mark_line().encode(
+                                                    x='Number of Iterations:Q',
+                                                    y='Loss Value:Q'
+                                                ).properties(
+                                                    title='Plot of loss values over number of iterations'
+                                                )
+    
+    return [finalFig.interactive(), lossFig.interactive()]
+
+with gr.Blocks(title="Regression Visualization") as demo:
+    gr.Markdown(
+    """
+    # Regression Visualization for Machine Learning
+    Choose your variables below to create a linear or logistic regression model!
+    """)
+    with gr.Row():
+        bType = gr.Radio(label="Regression Type",info="Choose 'log' for logistic, Choose 'lin' for linear",
+                      choices=['log','lin'], value='log')
+        l_rate = gr.Number(value=0.01,label="Learning Rate",info="Enter a value in the range 0.0 - 1.0")
+        epochs = gr.Number(value=100,label="Number of Epochs (Number of Training Iterations)",info="Enter an integer larger than 0",precision=0)
+    bStart = gr.Button(label="Start")
+    with gr.Row():
+        plot1 = gr.Plot()
+        plot2 = gr.Plot()
+    bStart.click(make_plot, inputs=[bType,l_rate,epochs], outputs=[plot1,plot2])
+    demo.load()
+
+if __name__== "__main__" :
+    demo.launch() 
